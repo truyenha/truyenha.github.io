@@ -1,70 +1,87 @@
 // =====================================================
-// TỦ TRUYỆN
+// TỦ TRUYỆN - BẢN ONLINE
+// Đọc dữ liệu từ stories.json
 // =====================================================
 
 
 // =====================================================
-// KHO TRUYỆN
+// BIẾN
 // =====================================================
 
-let stories = loadStories();
+let stories = [];
 
-
-// Truyện hiện tại
 let currentStory = null;
 
-
-// Chương hiện tại
 let currentChapterIndex = 0;
 
-
-// Cỡ chữ
 let fontSize = 18;
 
 
 // =====================================================
-// LƯU DỮ LIỆU
+// TẢI KHO TRUYỆN ONLINE
 // =====================================================
 
-function saveStories() {
-
-    localStorage.setItem(
-        "tuTruyenData",
-        JSON.stringify(stories)
-    );
-
-}
-
-
-// =====================================================
-// ĐỌC DỮ LIỆU
-// =====================================================
-
-function loadStories() {
-
-    const saved =
-        localStorage.getItem(
-            "tuTruyenData"
-        );
-
-
-    if (!saved) {
-
-        return [];
-
-    }
-
+async function loadOnlineStories() {
 
     try {
 
-        return JSON.parse(saved);
+        const response =
+            await fetch(
+                "stories.json?time=" +
+                Date.now()
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Không tải được stories.json"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        stories =
+            Array.isArray(data.stories)
+                ? data.stories
+                : [];
+
+
+        renderStories();
+
 
     }
     catch (error) {
 
         console.error(error);
 
-        return [];
+
+        const storyList =
+            document.getElementById(
+                "storyList"
+            );
+
+
+        storyList.innerHTML = `
+
+            <div class="story-card">
+
+                <h3>
+                    ⚠️ Không tải được kho truyện
+                </h3>
+
+                <p>
+                    Hãy kiểm tra kết nối Internet
+                    hoặc file stories.json.
+                </p>
+
+            </div>
+
+        `;
 
     }
 
@@ -75,7 +92,9 @@ function loadStories() {
 // HIỂN THỊ DANH SÁCH TRUYỆN
 // =====================================================
 
-function renderStories(list = stories) {
+function renderStories(
+    list = stories
+) {
 
     const storyList =
         document.getElementById(
@@ -86,7 +105,9 @@ function renderStories(list = stories) {
     storyList.innerHTML = "";
 
 
-    if (list.length === 0) {
+    if (
+        list.length === 0
+    ) {
 
         storyList.innerHTML = `
 
@@ -95,11 +116,6 @@ function renderStories(list = stories) {
                 <h3>
                     📚 Chưa có truyện
                 </h3>
-
-                <p>
-                    Hãy chọn file TXT
-                    để thêm truyện.
-                </p>
 
             </div>
 
@@ -110,63 +126,65 @@ function renderStories(list = stories) {
     }
 
 
-    list.forEach(story => {
+    list.forEach(
+        story => {
 
-        const div =
-            document.createElement(
-                "div"
-            );
-
-
-        div.className =
-            "story-card";
-
-
-        div.innerHTML = `
-
-            <h3>
-                📖 ${escapeHTML(
-                    story.title
-                )}
-            </h3>
-
-            <p>
-                ${escapeHTML(
-                    story.volume || ""
-                )}
-            </p>
-
-            <p>
-                Tác giả:
-                ${escapeHTML(
-                    story.author ||
-                    "Không rõ"
-                )}
-            </p>
-
-            <p>
-                ${story.chapters.length}
-                chương
-            </p>
-
-        `;
-
-
-        div.onclick =
-            function () {
-
-                openStory(
-                    story.id
+            const div =
+                document.createElement(
+                    "div"
                 );
 
-            };
+
+            div.className =
+                "story-card";
 
 
-        storyList.appendChild(
-            div
-        );
+            div.innerHTML = `
 
-    });
+                <h3>
+                    📖 ${escapeHTML(
+                        story.title
+                    )}
+                </h3>
+
+                <p>
+                    ${escapeHTML(
+                        story.volume || ""
+                    )}
+                </p>
+
+                <p>
+                    Tác giả:
+                    ${escapeHTML(
+                        story.author ||
+                        "Không rõ"
+                    )}
+                </p>
+
+                <p>
+                    ${story.chapters.length}
+                    chương
+                </p>
+
+            `;
+
+
+            div.onclick =
+                function () {
+
+                    openStory(
+                        story.id
+                    );
+
+                };
+
+
+            storyList.appendChild(
+                div
+            );
+
+        }
+    );
 
 }
 
@@ -184,7 +202,11 @@ function openStory(id) {
         );
 
 
-    if (!currentStory) return;
+    if (!currentStory) {
+
+        return;
+
+    }
 
 
     document
@@ -236,7 +258,7 @@ function openStory(id) {
 
 
 // =====================================================
-// HIỂN THỊ CHƯƠNG
+// HIỂN THỊ DANH SÁCH CHƯƠNG
 // =====================================================
 
 function renderChapters() {
@@ -252,6 +274,7 @@ function renderChapters() {
 
     if (
         !currentStory ||
+        !currentStory.chapters ||
         currentStory.chapters.length === 0
     ) {
 
@@ -264,7 +287,10 @@ function renderChapters() {
 
 
     currentStory.chapters.forEach(
-        (chapter, index) => {
+        (
+            chapter,
+            index
+        ) => {
 
             const row =
                 document.createElement(
@@ -293,46 +319,15 @@ function renderChapters() {
             button.onclick =
                 function () {
 
-                    openChapter(index);
-
-                };
-
-
-            const deleteButton =
-                document.createElement(
-                    "button"
-                );
-
-
-            deleteButton.className =
-                "delete-chapter-btn";
-
-
-            deleteButton.textContent =
-                "🗑";
-
-
-            deleteButton.title =
-                "Xóa chương";
-
-
-            deleteButton.onclick =
-                function (event) {
-
-                    event.stopPropagation();
-
-                    deleteChapter(index);
+                    openChapter(
+                        index
+                    );
 
                 };
 
 
             row.appendChild(
                 button
-            );
-
-
-            row.appendChild(
-                deleteButton
             );
 
 
@@ -352,14 +347,22 @@ function renderChapters() {
 
 function openChapter(index) {
 
-    if (!currentStory) return;
+    if (!currentStory) {
+
+        return;
+
+    }
 
 
     const chapter =
         currentStory.chapters[index];
 
 
-    if (!chapter) return;
+    if (!chapter) {
+
+        return;
+
+    }
 
 
     currentChapterIndex =
@@ -414,38 +417,34 @@ function openChapter(index) {
         chapter.content
             .split(
                 /\n\s*\n/
-            )
-            .map(
-                paragraph => {
-
-                    const p =
-                        document.createElement(
-                            "p"
-                        );
-
-
-                    p.textContent =
-                        paragraph.trim();
-
-
-                    return p;
-
-                }
             );
 
 
     paragraphs.forEach(
-        p => {
+        paragraph => {
 
             if (
-                p.textContent.trim()
+                paragraph.trim() === ""
             ) {
 
-                content.appendChild(
-                    p
-                );
+                return;
 
             }
+
+
+            const p =
+                document.createElement(
+                    "p"
+                );
+
+
+            p.textContent =
+                paragraph.trim();
+
+
+            content.appendChild(
+                p
+            );
 
         }
     );
@@ -474,7 +473,11 @@ function previousChapter() {
 
     if (
         !currentStory
-    ) return;
+    ) {
+
+        return;
+
+    }
 
 
     if (
@@ -498,7 +501,11 @@ function nextChapter() {
 
     if (
         !currentStory
-    ) return;
+    ) {
+
+        return;
+
+    }
 
 
     if (
@@ -521,18 +528,23 @@ function nextChapter() {
 
 function updateNavigation() {
 
-    const buttons = [
+    const prevButtons = [
 
         document.getElementById(
             "prevBtn"
         ),
 
         document.getElementById(
-            "nextBtn"
-        ),
+            "prevBtnTop"
+        )
+
+    ];
+
+
+    const nextButtons = [
 
         document.getElementById(
-            "prevBtnTop"
+            "nextBtn"
         ),
 
         document.getElementById(
@@ -552,136 +564,32 @@ function updateNavigation() {
         currentStory.chapters.length - 1;
 
 
-    buttons[0].disabled =
-        atFirst;
+    prevButtons.forEach(
+        button => {
 
+            if (button) {
 
-    buttons[2].disabled =
-        atFirst;
+                button.disabled =
+                    atFirst;
 
+            }
 
-    buttons[1].disabled =
-        atLast;
-
-
-    buttons[3].disabled =
-        atLast;
-
-}
-
-
-// =====================================================
-// XÓA TOÀN BỘ TRUYỆN
-// =====================================================
-
-function deleteCurrentStory() {
-
-    if (!currentStory) {
-
-        return;
-
-    }
-
-
-    const confirmDelete =
-        confirm(
-            `Bạn có chắc muốn xóa toàn bộ truyện "${currentStory.title}"?\n\nTất cả chương của truyện cũng sẽ bị xóa.`
-        );
-
-
-    if (!confirmDelete) {
-
-        return;
-
-    }
-
-
-    const id =
-        currentStory.id;
-
-
-    stories =
-        stories.filter(
-            story =>
-                story.id !== id
-        );
-
-
-    saveStories();
-
-
-    currentStory =
-        null;
-
-
-    goHome();
-
-
-    renderStories();
-
-}
-
-
-// =====================================================
-// XÓA MỘT CHƯƠNG
-// =====================================================
-
-function deleteChapter(index) {
-
-    if (!currentStory) {
-
-        return;
-
-    }
-
-
-    const chapter =
-        currentStory.chapters[index];
-
-
-    if (!chapter) {
-
-        return;
-
-    }
-
-
-    const confirmDelete =
-        confirm(
-            `Bạn có chắc muốn xóa Chương ${chapter.number}: ${chapter.title}?`
-        );
-
-
-    if (!confirmDelete) {
-
-        return;
-
-    }
-
-
-    currentStory.chapters.splice(
-        index,
-        1
+        }
     );
 
 
-    saveStories();
+    nextButtons.forEach(
+        button => {
 
+            if (button) {
 
-    renderChapters();
+                button.disabled =
+                    atLast;
 
+            }
 
-    renderStories();
-
-
-    // Nếu xóa hết chương
-    if (
-        currentStory.chapters.length === 0
-    ) {
-
-        return;
-
-    }
+        }
+    );
 
 }
 
@@ -850,510 +758,6 @@ document
 
 
 // =====================================================
-// ĐỌC FILE TXT
-// =====================================================
-
-async function loadTxtFiles() {
-
-    const input =
-        document.getElementById(
-            "txtFiles"
-        );
-
-
-    const files =
-        Array.from(
-            input.files
-        );
-
-
-    if (
-        files.length === 0
-    ) {
-
-        alert(
-            "Bạn chưa chọn file TXT."
-        );
-
-        return;
-
-    }
-
-
-    let addedCount = 0;
-
-    let duplicateCount = 0;
-
-
-    for (
-        const file of files
-    ) {
-
-        try {
-
-            const text =
-                await readTextFile(
-                    file
-                );
-
-
-            const chapter =
-                parseTxtFile(
-                    text,
-                    file.name
-                );
-
-
-            if (!chapter) {
-
-                continue;
-
-            }
-
-
-            const result =
-                addChapterToStory(
-                    chapter
-                );
-
-
-            if (
-                result === "added"
-            ) {
-
-                addedCount++;
-
-            }
-            else if (
-                result === "duplicate"
-            ) {
-
-                duplicateCount++;
-
-            }
-
-        }
-        catch (error) {
-
-            console.error(
-                error
-            );
-
-        }
-
-    }
-
-
-    saveStories();
-
-
-    renderStories();
-
-
-    let message =
-        `Đã thêm ${addedCount} chương.`;
-
-
-    if (
-        duplicateCount > 0
-    ) {
-
-        message +=
-            `\n${duplicateCount} chương đã tồn tại và được bỏ qua.`;
-
-    }
-
-
-    alert(
-        message
-    );
-
-
-    input.value = "";
-
-}
-
-
-// =====================================================
-// ĐỌC TXT
-// =====================================================
-
-function readTextFile(file) {
-
-    return new Promise(
-        (
-            resolve,
-            reject
-        ) => {
-
-            const reader =
-                new FileReader();
-
-
-            reader.onload =
-                function () {
-
-                    resolve(
-                        reader.result
-                    );
-
-                };
-
-
-            reader.onerror =
-                function () {
-
-                    reject(
-                        reader.error
-                    );
-
-                };
-
-
-            reader.readAsText(
-                file,
-                "UTF-8"
-            );
-
-        }
-    );
-
-}
-
-
-// =====================================================
-// PHÂN TÍCH TXT
-// =====================================================
-
-function parseTxtFile(
-    text,
-    filename
-) {
-
-    text =
-        text
-            .replace(
-                /\r\n/g,
-                "\n"
-            )
-            .replace(
-                /\r/g,
-                "\n"
-            );
-
-
-    text =
-        text.replace(
-            /^\uFEFF/,
-            ""
-        );
-
-
-    const lines =
-        text.split("\n");
-
-
-    // -----------------------------------------
-    // TÊN TRUYỆN
-    // -----------------------------------------
-
-    const storyLine =
-        (
-            lines[0] || ""
-        ).trim();
-
-
-    if (!storyLine) {
-
-        return null;
-
-    }
-
-
-    let storyTitle =
-        storyLine;
-
-
-    let volume =
-        "";
-
-
-    const volumeMatch =
-        storyLine.match(
-            /^(.*?)\s*-\s*Quyển\s*(\d+)\s*:\s*[“"]?(.*?)[”"]?\s*\.?\s*$/i
-        );
-
-
-    if (volumeMatch) {
-
-        storyTitle =
-            volumeMatch[1]
-                .replace(
-                    /[“”"]/g,
-                    ""
-                )
-                .trim();
-
-
-        volume =
-            `Quyển ${volumeMatch[2]} - ` +
-            volumeMatch[3]
-                .replace(
-                    /[“”"]/g,
-                    ""
-                )
-                .trim();
-
-    }
-
-
-    // -----------------------------------------
-    // TÁC GIẢ
-    // -----------------------------------------
-
-    let author = "";
-
-
-    for (
-        let i = 1;
-        i < Math.min(
-            lines.length,
-            10
-        );
-        i++
-    ) {
-
-        const match =
-            lines[i].match(
-                /^\s*Tác\s*Giả\s*:\s*(.*?)\s*\.?\s*$/i
-            );
-
-
-        if (match) {
-
-            author =
-                match[1]
-                    .trim();
-
-            break;
-
-        }
-
-    }
-
-
-    // -----------------------------------------
-    // CHAP
-    // -----------------------------------------
-
-    let chapterIndex =
-        -1;
-
-
-    let chapterNumber =
-        null;
-
-
-    let chapterTitle =
-        "";
-
-
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
-
-        const line =
-            lines[i].trim();
-
-
-        const match =
-            line.match(
-                /^\s*Chap\s*(\d+)\s*:\s*[“"]?(.*?)[”"]?\s*\.?\s*$/i
-            );
-
-
-        if (match) {
-
-            chapterIndex =
-                i;
-
-
-            chapterNumber =
-                parseInt(
-                    match[1],
-                    10
-                );
-
-
-            chapterTitle =
-                match[2]
-                    .replace(
-                        /[“”"]/g,
-                        ""
-                    )
-                    .replace(
-                        /\.$/,
-                        ""
-                    )
-                    .trim();
-
-
-            break;
-
-        }
-
-    }
-
-
-    if (
-        chapterIndex === -1
-    ) {
-
-        console.warn(
-            "Không tìm thấy Chap:",
-            filename
-        );
-
-
-        return null;
-
-    }
-
-
-    // -----------------------------------------
-    // NỘI DUNG
-    // -----------------------------------------
-
-    const content =
-        lines
-            .slice(
-                chapterIndex + 1
-            )
-            .join("\n")
-            .trim();
-
-
-    return {
-
-        storyTitle:
-            storyTitle,
-
-        volume:
-            volume,
-
-        author:
-            author,
-
-        number:
-            chapterNumber,
-
-        title:
-            chapterTitle,
-
-        content:
-            content,
-
-        filename:
-            filename
-
-    };
-
-}
-
-
-// =====================================================
-// THÊM CHƯƠNG
-// =====================================================
-
-function addChapterToStory(
-    chapter
-) {
-
-    let story =
-        stories.find(
-            s =>
-                s.title ===
-                chapter.storyTitle
-        );
-
-
-    if (!story) {
-
-        story = {
-
-            id:
-                Date.now() +
-                Math.random(),
-
-            title:
-                chapter.storyTitle,
-
-            volume:
-                chapter.volume,
-
-            author:
-                chapter.author,
-
-            chapters:
-                []
-
-        };
-
-
-        stories.push(
-            story
-        );
-
-    }
-
-
-    const exists =
-        story.chapters.some(
-            oldChapter =>
-                oldChapter.number ===
-                chapter.number
-        );
-
-
-    if (exists) {
-
-        return "duplicate";
-
-    }
-
-
-    story.chapters.push({
-
-        number:
-            chapter.number,
-
-        title:
-            chapter.title,
-
-        content:
-            chapter.content
-
-    });
-
-
-    story.chapters.sort(
-        (
-            a,
-            b
-        ) =>
-            a.number -
-            b.number
-    );
-
-
-    return "added";
-
-}
-
-
-// =====================================================
 // CHỐNG HTML
 // =====================================================
 
@@ -1393,4 +797,4 @@ function escapeHTML(text) {
 // KHỞI ĐỘNG
 // =====================================================
 
-renderStories();
+loadOnlineStories();
