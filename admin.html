@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Quản trị tủ truyện</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .story {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .chapter {
+            padding: 8px;
+            border-top: 1px solid #eee;
+        }
+
+        .delete {
+            background: #d9534f;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+    <h1>📚 Quản trị tủ truyện</h1>
+
+
+    <!-- ========================= -->
+    <!-- ĐĂNG NHẬP -->
+    <!-- ========================= -->
+
+    <div
+        id="loginBox"
+        class="box"
+    >
+
+        <h2>🔐 Đăng nhập</h2>
+
+        <input
+            id="email"
+            type="email"
+            placeholder="Email"
+        >
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Mật khẩu"
+        >
+
+        <button id="loginBtn">
+            Đăng nhập
+        </button>
+
+        <p id="loginMessage"></p>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- ADMIN -->
+    <!-- ========================= -->
+
+    <div
+        id="adminBox"
+        class="hidden"
+    >
+
+
+        <div class="box">
+
+            <button id="logoutBtn">
+                Đăng xuất
+            </button>
+
+            <h2>📂 Thêm truyện bằng TXT</h2>
+
+            <p>
+                Mỗi file TXT = 1 chương.
+            </p>
+
+            <input
+                id="txtFiles"
+                type="file"
+                accept=".txt"
+                multiple
+            >
+
+            <br>
+
+            <button id="uploadBtn">
+                ⬆️ Tải truyện lên
+            </button>
+
+            <p id="uploadMessage"></p>
+
+        </div>
+
+
+        <div class="box">
+
+            <h2>📚 Kho truyện</h2>
+
+            <div id="storyList">
+                Đang tải...
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script type="module">
+
+        import {
+            createClient
+        }
+        from
+        "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+
+        // =====================================================
+        // SUPABASE
+        // =====================================================
+
+        const SUPABASE_URL =
+            "https://yqarsofpiwyrojvzrirt.supabase.co";
+
+        const SUPABASE_KEY =
+            "sb_publishable_TyaNbO4RVgFgBBBqD9-Pzg_7LjVjRNB";
+
+
+        const supabase =
+            createClient(
+                SUPABASE_URL,
+                SUPABASE_KEY
+            );
+
+
+        // =====================================================
+        // ELEMENT
+        // =====================================================
+
+        const loginBox =
+            document.getElementById(
+                "loginBox"
+            );
+
+        const adminBox =
+            document.getElementById(
+                "adminBox"
+            );
+
+        const loginMessage =
+            document.getElementById(
+                "loginMessage"
+            );
+
+        const uploadMessage =
+            document.getElementById(
+                "uploadMessage"
+            );
+
+
+        // =====================================================
+        // ĐĂNG NHẬP
+        // =====================================================
+
+        document
+            .getElementById("loginBtn")
+            .onclick =
+            async function () {
+
+                const email =
+                    document
+                        .getElementById("email")
+                        .value
+                        .trim();
+
+                const password =
+                    document
+                        .getElementById("password")
+                        .value;
+
+
+                loginMessage.textContent =
+                    "Đang đăng nhập...";
+
+
+                const {
+                    error
+                } =
+                await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+
+                if (error) {
+
+                    loginMessage.className =
+                        "error";
+
+                    loginMessage.textContent =
+                        "Đăng nhập lỗi: " +
+                        error.message;
+
+                    return;
+                }
+
+
+                loginMessage.className =
+                    "success";
+
+                loginMessage.textContent =
+                    "Đăng nhập thành công.";
+
+
+                showAdmin();
+
+            };
+
+
+        // =====================================================
+        // HIỂN THỊ ADMIN
+        // =====================================================
+
+        function showAdmin() {
+
+            loginBox.classList.add(
+                "hidden"
+            );
+
+            adminBox.classList.remove(
+                "hidden"
+            );
+
+            loadStories();
+
+        }
+
+
+        // =====================================================
+        // KIỂM TRA ĐĂNG NHẬP
+        // =====================================================
+
+        async function checkLogin() {
+
+            const {
+                data
+            } =
+            await supabase.auth.getSession();
+
+
+            if (
+                data.session
+            ) {
+
+                showAdmin();
+
+            }
+
+        }
+
+
+        // =====================================================
+        // ĐĂNG XUẤT
+        // =====================================================
+
+        document
+            .getElementById("logoutBtn")
+            .onclick =
+            async function () {
+
+                await supabase.auth.signOut();
+
+                location.reload();
+
+            };
+
+
+        // =====================================================
+        // ĐỌC TXT
+        // =====================================================
+
+        async function readTxt(
+            file
+        ) {
+
+            let text =
+                await file.text();
+
+
+            // Xóa BOM
+            text =
+                text.replace(
+                    /^\uFEFF/,
+                    ""
+                );
+
+
+            const lines =
+                text.split(/\r?\n/);
+
+
+            let title =
+                "";
+
+            let volume =
+                "";
+
+            let author =
+                "";
+
+            let chapterNumber =
+                0;
+
+            let chapterTitle =
+                "";
+
+            let bodyStart =
+                0;
+
+
+            // ---------------------------------------------
+            // TITLE
+            // ---------------------------------------------
+
+            if (lines[0]) {
+
+                title =
+                    lines[0]
+                        .replace(
+                            /["“”]/g,
+                            ""
+                        )
+                        .replace(
+                            /[-–—]\s*Quyển.*$/i,
+                            ""
+                        )
+                        .trim();
+
+            }
+
+
+            // ---------------------------------------------
+            // VOLUME
+            // ---------------------------------------------
+
+            const volumeMatch =
+                text.match(
+                    /Quyển\s+\d+\s*[:\-–—]?\s*[“"]?([^"\n”]+)[”"]?/i
+                );
+
+
+            if (volumeMatch) {
+
+                volume =
+                    "Quyển " +
+                    (
+                        text.match(
+                            /Quyển\s+\d+/i
+                        ) || [""]
+                    )[0]
+                        .replace(
+                            /\s+/g,
+                            " "
+                        )
+                        .trim()
+                        .replace(
+                            /quyển/i,
+                            "Quyển"
+                        )
+                        +
+                    " - " +
+                    volumeMatch[1]
+                        .trim();
+
+            }
+
+
+            // ---------------------------------------------
+            // AUTHOR
+            // ---------------------------------------------
+
+            for (
+                let i = 0;
+                i < Math.min(
+                    lines.length,
+                    10
+                );
+                i++
+            ) {
+
+                const match =
+                    lines[i].match(
+                        /Tác\s*Giả\s*:\s*(.+)/i
+                    );
+
+                if (match) {
+
+                    author =
+                        match[1]
+                            .trim();
+
+                    break;
+
+                }
+
+            }
+
+
+            // ---------------------------------------------
+            // CHAPTER
+            // ---------------------------------------------
+
+            for (
+                let i = 0;
+                i < Math.min(
+                    lines.length,
+                    15
+                );
+                i++
+            ) {
+
+                const match =
+                    lines[i].match(
+                        /Chap(?:ter)?\s*(\d+)\s*[:\-–—]?\s*[“"]?(.+?)[”"]?\s*$/i
+                    );
+
+
+                if (match) {
+
+                    chapterNumber =
+                        parseInt(
+                            match[1]
+                        );
+
+                    chapterTitle =
+                        match[2]
+                            .replace(
+                                /[“”"]/g,
+                                ""
+                            )
+                            .trim();
+
+                    bodyStart =
+                        i + 1;
+
+                    break;
+
+                }
+
+            }
+
+
+            // ---------------------------------------------
+            // BODY
+            // ---------------------------------------------
+
+            const content =
+                lines
+                    .slice(bodyStart)
+                    .join("\n")
+                    .trim();
+
+
+            return {
+
+                title,
+                volume,
+                author,
+                chapterNumber,
+                chapterTitle,
+                content
+
+            };
+
+        }
+
+
+        // =====================================================
+        // SLUG
+        // =====================================================
+
+        function makeSlug(
+            text
+        ) {
+
+            return text
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(
+                    /[\u0300-\u036f]/g,
+                    ""
+                )
+                .replace(
+                    /đ/g,
+                    "d"
+                )
+                .replace(
+                    /[^a-z0-9]+/g,
+                    "-"
+                )
+                .replace(
+                    /^-+|-+$/g,
+                    "");
+
+        }
+
+
+        // =====================================================
+        // UPLOAD TXT
+        // =====================================================
+
+        document
+            .getElementById("uploadBtn")
+            .onclick =
+            async function () {
+
+                const files =
+                    document
+                        .getElementById("txtFiles")
+                        .files;
+
+
+                if (
+                    files.length === 0
+                ) {
+
+                    alert(
+                        "Hãy chọn file TXT."
+                    );
+
+                    return;
+
+                }
+
+
+                uploadMessage.className =
+                    "";
+
+                uploadMessage.textContent =
+                    "Đang xử lý...";
+
+
+                try {
+
+                    for (
+                        const file of files
+                    ) {
+
+                        const data =
+                            await readTxt(
+                                file
+                            );
+
+
+                        if (
+                            !data.title ||
+                            !data.chapterNumber ||
+                            !data.content
+                        ) {
+
+                            console.warn(
+                                "Bỏ qua file:",
+                                file.name
+                            );
+
+                            continue;
+
+                        }
+
+
+                        // ---------------------------------
+                        // TÌM TRUYỆN
+                        // ---------------------------------
+
+                        let {
+                            data: stories,
+                            error
+                        } =
+                        await supabase
+                            .from("stories")
+                            .select("*")
+                            .eq(
+                                "title",
+                                data.title
+                            )
+                            .limit(1);
+
+
+                        if (error) {
+                            throw error;
+                        }
+
+
+                        let story;
+
+
+                        if (
+                            stories.length > 0
+                        ) {
+
+                            story =
+                                stories[0];
+
+                        }
+                        else {
+
+                            const result =
+                                await supabase
+                                    .from("stories")
+                                    .insert({
+                                        title:
+                                            data.title,
+
+                                        volume:
+                                            data.volume,
+
+                                        author:
+                                            data.author
+                                    })
+                                    .select()
+                                    .single();
+
+
+                            if (
+                                result.error
+                            ) {
+                                throw result.error;
+                            }
+
+
+                            story =
+                                result.data;
+
+                        }
+
+
+                        // ---------------------------------
+                        // KIỂM TRA CHƯƠNG
+                        // ---------------------------------
+
+                        const existing =
+                            await supabase
+                                .from("chapters")
+                                .select("id")
+                                .eq(
+                                    "story_id",
+                                    story.id
+                                )
+                                .eq(
+                                    "chapter_number",
+                                    data.chapterNumber
+                                )
+                                .maybeSingle();
+
+
+                        if (
+                            existing.error
+                        ) {
+                            throw existing.error;
+                        }
+
+
+                        if (
+                            existing.data
+                        ) {
+
+                            console.log(
+                                "Đã tồn tại chương:",
+                                data.chapterNumber
+                            );
+
+                            continue;
+
+                        }
+
+
+                        // ---------------------------------
+                        // THÊM CHƯƠNG
+                        // ---------------------------------
+
+                        const result =
+                            await supabase
+                                .from("chapters")
+                                .insert({
+
+                                    story_id:
+                                        story.id,
+
+                                    chapter_number:
+                                        data.chapterNumber,
+
+                                    chapter_title:
+                                        data.chapterTitle,
+
+                                    content:
+                                        data.content
+
+                                });
+
+
+                        if (
+                            result.error
+                        ) {
+                            throw result.error;
+                        }
+
+                    }
+
+
+                    uploadMessage.className =
+                        "success";
+
+                    uploadMessage.textContent =
+                        "✅ Đã tải truyện thành công!";
+
+
+                    loadStories();
+
+                }
+                catch (
+                    error
+                ) {
+
+                    console.error(
+                        error
+                    );
+
+                    uploadMessage.className =
+                        "error";
+
+                    uploadMessage.textContent =
+                        "❌ Lỗi: " +
+                        error.message;
+
+                }
+
+            };
+
+
+        // =====================================================
+        // LOAD STORIES
+        // =====================================================
+
+        async function loadStories() {
+
+            const storyList =
+                document.getElementById(
+                    "storyList"
+                );
+
+
+            storyList.innerHTML =
+                "Đang tải...";
+
+
+            const {
+                data,
+                error
+            } =
+            await supabase
+                .from("stories")
+                .select(
+                    `
+                    *,
+                    chapters (*)
+                    `
+                )
+                .order(
+                    "created_at",
+                    {
+                        ascending: false
+                    }
+                );
+
+
+            if (error) {
+
+                storyList.innerHTML =
+                    "❌ " +
+                    error.message;
+
+                return;
+
+            }
+
+
+            storyList.innerHTML =
+                "";
+
+
+            if (
+                data.length === 0
+            ) {
+
+                storyList.innerHTML =
+                    "Chưa có truyện.";
+
+                return;
+
+            }
+
+
+            data.forEach(
+                story => {
+
+                    story.chapters.sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            a.chapter_number -
+                            b.chapter_number
+                    );
+
+
+                    const div =
+                        document.createElement(
+                            "div"
+                        );
+
+                    div.className =
+                        "story";
+
+
+                    div.innerHTML = `
+
+                        <h3>
+                            📖
+                            ${escapeHTML(
+                                story.title
+                            )}
+                        </h3>
+
+                        <p>
+                            ${
+                                escapeHTML(
+                                    story.volume ||
+                                    ""
+                                )
+                            }
+                        </p>
+
+                        <p>
+                            Tác giả:
+                            ${
+                                escapeHTML(
+                                    story.author ||
+                                    ""
+                                )
+                            }
+                        </p>
+
+                        <p>
+                            ${
+                                story.chapters.length
+                            }
+                            chương
+                        </p>
+
+                        <button
+                            class="delete"
+                            onclick="deleteStory('${story.id}')"
+                        >
+                            🗑️ Xóa truyện
+                        </button>
+
+                        <div>
+
+                            ${
+                                story.chapters
+                                    .map(
+                                        chapter => `
+
+                                        <div
+                                            class="chapter"
+                                        >
+
+                                            Chương
+                                            ${
+                                                chapter.chapter_number
+                                            }:
+                                            ${
+                                                escapeHTML(
+                                                    chapter.chapter_title ||
+                                                    ""
+                                                )
+                                            }
+
+                                            <button
+                                                class="delete"
+                                                onclick="deleteChapter('${chapter.id}')"
+                                            >
+                                                Xóa
+                                            </button>
+
+                                        </div>
+
+                                    `
+                                    )
+                                    .join("")
+                            }
+
+                        </div>
+
+                    `;
+
+
+                    storyList.appendChild(
+                        div
+                    );
+
+                }
+            );
+
+        }
+
+
+        // =====================================================
+        // DELETE STORY
+        // =====================================================
+
+        window.deleteStory =
+            async function (
+                id
+            ) {
+
+                if (
+                    !confirm(
+                        "Xóa toàn bộ truyện này?"
+                    )
+                ) {
+                    return;
+                }
+
+
+                const {
+                    error
+                } =
+                await supabase
+                    .from("stories")
+                    .delete()
+                    .eq(
+                        "id",
+                        id
+                    );
+
+
+                if (error) {
+
+                    alert(
+                        error.message
+                    );
+
+                    return;
+
+                }
+
+
+                loadStories();
+
+            };
+
+
+        // =====================================================
+        // DELETE CHAPTER
+        // =====================================================
+
+        window.deleteChapter =
+            async function (
+                id
+            ) {
+
+                if (
+                    !confirm(
+                        "Xóa chương này?"
+                    )
+                ) {
+                    return;
+                }
+
+
+                const {
+                    error
+                } =
+                await supabase
+                    .from("chapters")
+                    .delete()
+                    .eq(
+                        "id",
+                        id
+                    );
+
+
+                if (error) {
+
+                    alert(
+                        error.message
+                    );
+
+                    return;
+
+                }
+
+
+                loadStories();
+
+            };
+
+
+        // =====================================================
+        // ESCAPE HTML
+        // =====================================================
+
+        function escapeHTML(
+            text
+        ) {
+
+            return String(text)
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
+
+        }
+
+
+        // =====================================================
+        // START
+        // =====================================================
+
+        checkLogin();
+
+    </script>
+
+</body>
+
+</html>
