@@ -1,7 +1,27 @@
 // =====================================================
-// TỦ TRUYỆN - BẢN ONLINE
-// Đọc dữ liệu từ stories.json
+// TỦ TRUYỆN - ONLINE SUPABASE
 // =====================================================
+
+import {
+    createClient
+} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+
+// =====================================================
+// SUPABASE
+// =====================================================
+
+const SUPABASE_URL =
+    "https://yqarsofpiwyrojvzrirt.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable_TyaNbO4RVgFgBBBqD9-Pzg_7LjVjRNB";
+
+const supabase =
+    createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
 
 
 // =====================================================
@@ -18,46 +38,71 @@ let fontSize = 18;
 
 
 // =====================================================
-// TẢI KHO TRUYỆN ONLINE
+// TẢI TRUYỆN
 // =====================================================
 
 async function loadOnlineStories() {
 
     try {
 
-        const response =
-            await fetch(
-                "stories.json?time=" +
-                Date.now()
+        const {
+            data,
+            error
+        } =
+        await supabase
+            .from("stories")
+            .select(`
+                *,
+                chapters (*)
+            `)
+            .order(
+                "created_at",
+                {
+                    ascending: true
+                }
             );
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                "Không tải được stories.json"
-            );
-
+        if (error) {
+            throw error;
         }
 
 
-        const data =
-            await response.json();
-
-
         stories =
-            Array.isArray(data.stories)
-                ? data.stories
-                : [];
+            data || [];
+
+
+        // Sắp xếp chương
+        stories.forEach(
+            story => {
+
+                if (
+                    story.chapters
+                ) {
+
+                    story.chapters.sort(
+                        (
+                            a,
+                            b
+                        ) =>
+                            a.chapter_number -
+                            b.chapter_number
+                    );
+
+                }
+
+            }
+        );
 
 
         renderStories();
 
-
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
         const storyList =
@@ -67,7 +112,6 @@ async function loadOnlineStories() {
 
 
         storyList.innerHTML = `
-
             <div class="story-card">
 
                 <h3>
@@ -75,12 +119,13 @@ async function loadOnlineStories() {
                 </h3>
 
                 <p>
-                    Hãy kiểm tra kết nối Internet
-                    hoặc file stories.json.
+                    ${escapeHTML(
+                        error.message ||
+                        "Lỗi kết nối Supabase"
+                    )}
                 </p>
 
             </div>
-
         `;
 
     }
@@ -102,7 +147,8 @@ function renderStories(
         );
 
 
-    storyList.innerHTML = "";
+    storyList.innerHTML =
+        "";
 
 
     if (
@@ -110,15 +156,18 @@ function renderStories(
     ) {
 
         storyList.innerHTML = `
-
             <div class="story-card">
 
                 <h3>
                     📚 Chưa có truyện
                 </h3>
 
-            </div>
+                <p>
+                    Hãy vào trang quản trị trên PC
+                    để thêm truyện.
+                </p>
 
+            </div>
         `;
 
         return;
@@ -142,14 +191,16 @@ function renderStories(
             div.innerHTML = `
 
                 <h3>
-                    📖 ${escapeHTML(
+                    📖
+                    ${escapeHTML(
                         story.title
                     )}
                 </h3>
 
                 <p>
                     ${escapeHTML(
-                        story.volume || ""
+                        story.volume ||
+                        ""
                     )}
                 </p>
 
@@ -162,7 +213,11 @@ function renderStories(
                 </p>
 
                 <p>
-                    ${story.chapters.length}
+                    ${
+                        story.chapters
+                            ? story.chapters.length
+                            : 0
+                    }
                     chương
                 </p>
 
@@ -193,7 +248,9 @@ function renderStories(
 // MỞ TRUYỆN
 // =====================================================
 
-function openStory(id) {
+function openStory(
+    id
+) {
 
     currentStory =
         stories.find(
@@ -202,10 +259,10 @@ function openStory(id) {
         );
 
 
-    if (!currentStory) {
-
+    if (
+        !currentStory
+    ) {
         return;
-
     }
 
 
@@ -258,7 +315,7 @@ function openStory(id) {
 
 
 // =====================================================
-// HIỂN THỊ DANH SÁCH CHƯƠNG
+// DANH SÁCH CHƯƠNG
 // =====================================================
 
 function renderChapters() {
@@ -269,7 +326,8 @@ function renderChapters() {
         );
 
 
-    chapterList.innerHTML = "";
+    chapterList.innerHTML =
+        "";
 
 
     if (
@@ -313,7 +371,7 @@ function renderChapters() {
 
 
             button.textContent =
-                `Chương ${chapter.number}: ${chapter.title}`;
+                `Chương ${chapter.chapter_number}: ${chapter.chapter_title || ""}`;
 
 
             button.onclick =
@@ -345,12 +403,14 @@ function renderChapters() {
 // MỞ CHƯƠNG
 // =====================================================
 
-function openChapter(index) {
+function openChapter(
+    index
+) {
 
-    if (!currentStory) {
-
+    if (
+        !currentStory
+    ) {
         return;
-
     }
 
 
@@ -358,10 +418,10 @@ function openChapter(index) {
         currentStory.chapters[index];
 
 
-    if (!chapter) {
-
+    if (
+        !chapter
+    ) {
         return;
-
     }
 
 
@@ -401,7 +461,7 @@ function openChapter(index) {
             "readerTitle"
         )
         .textContent =
-        `Chương ${chapter.number}: ${chapter.title}`;
+        `Chương ${chapter.chapter_number}: ${chapter.chapter_title || ""}`;
 
 
     const content =
@@ -410,7 +470,8 @@ function openChapter(index) {
         );
 
 
-    content.innerHTML = "";
+    content.innerHTML =
+        "";
 
 
     const paragraphs =
@@ -426,9 +487,7 @@ function openChapter(index) {
             if (
                 paragraph.trim() === ""
             ) {
-
                 return;
-
             }
 
 
@@ -474,9 +533,7 @@ function previousChapter() {
     if (
         !currentStory
     ) {
-
         return;
-
     }
 
 
@@ -502,9 +559,7 @@ function nextChapter() {
     if (
         !currentStory
     ) {
-
         return;
-
     }
 
 
@@ -567,7 +622,9 @@ function updateNavigation() {
     prevButtons.forEach(
         button => {
 
-            if (button) {
+            if (
+                button
+            ) {
 
                 button.disabled =
                     atFirst;
@@ -581,7 +638,9 @@ function updateNavigation() {
     nextButtons.forEach(
         button => {
 
-            if (button) {
+            if (
+                button
+            ) {
 
                 button.disabled =
                     atLast;
@@ -665,9 +724,12 @@ function goChapters() {
 // CỠ CHỮ
 // =====================================================
 
-function changeFontSize(change) {
+function changeFontSize(
+    change
+) {
 
-    fontSize += change;
+    fontSize +=
+        change;
 
 
     if (
@@ -758,33 +820,30 @@ document
 
 
 // =====================================================
-// CHỐNG HTML
+// ESCAPE HTML
 // =====================================================
 
-function escapeHTML(text) {
+function escapeHTML(
+    text
+) {
 
     return String(text)
-
         .replace(
             /&/g,
             "&amp;"
         )
-
         .replace(
             /</g,
             "&lt;"
         )
-
         .replace(
             />/g,
             "&gt;"
         )
-
         .replace(
             /"/g,
             "&quot;"
         )
-
         .replace(
             /'/g,
             "&#039;"
@@ -794,7 +853,7 @@ function escapeHTML(text) {
 
 
 // =====================================================
-// KHỞI ĐỘNG
+// BẮT ĐẦU
 // =====================================================
 
 loadOnlineStories();
